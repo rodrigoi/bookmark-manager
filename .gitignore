@@ -13,6 +13,9 @@
 # testing
 /coverage
 
+# Turbo
+.turbo
+
 # next.js
 /.next/
 /out/

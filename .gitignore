@@ -51,3 +51,6 @@ next-env.d.ts
 
 # Turborepo
 .turbo
+
+# SQL Lite DB
+.data/

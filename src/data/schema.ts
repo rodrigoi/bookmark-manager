@@ -11,3 +11,5 @@ export const bookmarks = sqliteTable("bookmarks", {
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
 });
+
+export type Bookmark = typeof bookmarks.$inferSelect;

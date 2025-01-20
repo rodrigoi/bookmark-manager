@@ -1,9 +1,7 @@
-interface HeaderProps {
-  isManaging: boolean;
-  onManageClick: () => void;
-}
+const isManaging = false;
+const onManageClick = () => {};
 
-export function Header({ isManaging, onManageClick }: HeaderProps) {
+export function Header() {
   return (
     <header className="flex items-center justify-between py-4">
       <div className="flex items-center gap-2">
@@ -14,7 +12,6 @@ export function Header({ isManaging, onManageClick }: HeaderProps) {
         className={`border px-4 py-1 text-sm hover:bg-gray-100 ${
           isManaging ? "bg-gray-100" : ""
         }`}
-        onClick={onManageClick}
       >
         MANAGE
       </button>

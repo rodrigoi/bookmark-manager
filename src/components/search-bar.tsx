@@ -1,71 +1,83 @@
-"use client";
-
-import { KeyboardEvent, useEffect, useRef, useState } from "react";
-
 import { Search } from "lucide-react";
+import { bookmarks } from "@/data/schema";
+import { db } from "@/data";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
-
-interface SearchBarProps {
-  searchQuery: string;
-  onSearchChange: (value: string) => void;
-  onEnter: (url: string) => void;
-}
 
 const urlSchema = z.string().url();
 
-export function SearchBar({
-  searchQuery,
-  onSearchChange,
-  onEnter,
-}: SearchBarProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [isError, setIsError] = useState(false);
+const getMetadata = async (
+  url: string
+): Promise<{ title: string; icon: string }> => {
+  "use server";
+  const response = await fetch(url);
 
-  useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.key === "/" && document.activeElement !== inputRef.current) {
-        e.preventDefault();
-        inputRef.current?.focus();
-      }
-    };
+  const html = await response.text();
 
-    document.addEventListener("keydown", handleKeyPress);
-    return () => document.removeEventListener("keydown", handleKeyPress);
-  }, []);
+  const titleMatch = html.match(/<title>(.*?)<\/title>/);
+  const title = titleMatch ? titleMatch[1] : "";
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      const input = e.currentTarget.value.trim();
-      const result = urlSchema.safeParse(input);
-      if (result.success) {
-        setIsError(false);
-        onEnter(input);
-      } else {
-        setIsError(true);
-      }
-    }
-  };
+  const faviconMatch = html.match(
+    /<link.*?rel="(shortcut )?icon".*?href="(.*?)"/
+  );
+  let iconURL = faviconMatch ? new URL(faviconMatch[2], url).href : "";
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onSearchChange(e.target.value);
-    setIsError(false);
-  };
+  let icon = "";
+  if (iconURL) {
+    const iconResponse = await fetch(iconURL);
+    const iconArrayBuffer = await iconResponse.arrayBuffer();
+    const buffer = Buffer.from(iconArrayBuffer);
+    icon = `data:${
+      iconResponse.headers.get("content-type") || "image/x-icon"
+    };base64,${buffer.toString("base64")}`;
+  }
 
+  return { title, icon };
+};
+
+const handleSubmit = async (formData: FormData): Promise<void> => {
+  "use server";
+
+  const url = formData.get("url") as string;
+
+  console.log(url);
+
+  const result = urlSchema.safeParse(url);
+  if (!result.success || !url) {
+    return;
+  }
+
+  const normalizedUrl = url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+
+  try {
+    const { title, icon } = await getMetadata(url);
+
+    await db.insert(bookmarks).values({
+      title: title || url,
+      url: url,
+      icon: icon || "📄",
+    });
+
+    revalidatePath("/");
+  } catch (error) {
+    return;
+  }
+};
+
+export function SearchBar() {
   return (
     <div className="sticky top-0 bg-white z-10 py-4">
       <div className="relative">
-        <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
-        <input
-          ref={inputRef}
-          type="text"
-          value={searchQuery}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          placeholder="Search or paste URL (Press '/' to focus)"
-          className={`w-full border px-12 py-3 font-mono text-sm focus:outline-none ${
-            isError ? "border-red-500" : ""
-          }`}
-        />
+        <form action={handleSubmit}>
+          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
+          <input
+            type="text"
+            id="url"
+            name="url"
+            placeholder="Search or paste URL (Press '/' to focus)"
+            className={`w-full border px-12 py-3 font-mono text-sm focus:outline-none`}
+          />
+        </form>
       </div>
     </div>
   );

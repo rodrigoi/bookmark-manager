@@ -1,101 +1,162 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+
+import { BookmarkList } from "@/components/bookmark-list";
+import { Header } from "@/components/header";
+import { SearchBar } from "@/components/search-bar";
+import { z } from "zod";
+
+interface Bookmark {
+  id: number;
+  title: string;
+  icon: string;
+  url: string;
+  date: string;
+}
+
+const urlSchema = z.string().url();
+
+// Dummy data
+const initialBookmarks: Bookmark[] = [
+  {
+    id: 1,
+    title: "Lee Robinson",
+    icon: "👤",
+    url: "leerob.com",
+    date: "Jan 02, 2025",
+  },
+  {
+    id: 2,
+    title: "There's no speed limit | Derek Sivers",
+    icon: "⬡",
+    url: "sive.rs",
+    date: "Jan 02, 2025",
+  },
+  {
+    id: 3,
+    title: "Things you're allowed to do",
+    icon: "M",
+    url: "milan.cvitkovic.net",
+    date: "Jan 02, 2025",
+  },
+  {
+    id: 4,
+    title: "PlasticList",
+    icon: "⚡",
+    url: "www.plasticlist.org",
+    date: "Jan 01, 2025",
+  },
+  {
+    id: 5,
+    title: "Things we learned about LLMs in 2024",
+    icon: "🤖",
+    url: "simonwillison.net",
+    date: "Jan 01, 2025",
+  },
+];
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isManaging, setIsManaging] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+  useEffect(() => {
+    const storedBookmarks = localStorage.getItem("bookmarks");
+    if (storedBookmarks) {
+      setBookmarks(JSON.parse(storedBookmarks));
+    } else {
+      setBookmarks(initialBookmarks);
+      localStorage.setItem("bookmarks", JSON.stringify(initialBookmarks));
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("bookmarks", JSON.stringify(bookmarks));
+  }, [bookmarks]);
+
+  const filteredBookmarks = bookmarks.filter((bookmark) => {
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      bookmark.title.toLowerCase().includes(searchLower) ||
+      bookmark.url.toLowerCase().includes(searchLower)
+    );
+  });
+
+  const addBookmark = async (url: string) => {
+    const result = urlSchema.safeParse(url);
+    if (!result.success) {
+      console.error("Invalid URL");
+      return;
+    }
+
+    // Check for duplicates
+    const normalizedUrl = url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    const isDuplicate = bookmarks.some(
+      (bookmark) =>
+        bookmark.url.replace(/^https?:\/\//, "").replace(/\/$/, "") ===
+        normalizedUrl
+    );
+
+    if (isDuplicate) {
+      console.error("This URL already exists in your bookmarks");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/fetchMetadata?url=${encodeURIComponent(url)}`
+      );
+      const data = await response.json();
+
+      const newBookmark: Bookmark = {
+        id: Date.now(),
+        title: data.title || url,
+        icon: data.icon || "📄",
+        url: url,
+        date: new Date().toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+        }),
+      };
+
+      setBookmarks((prev) => [...prev, newBookmark]);
+      setSearchQuery("");
+    } catch (error) {
+      console.error("Failed to add bookmark:", error);
+    }
+  };
+
+  const updateBookmark = (id: number, newTitle: string) => {
+    setBookmarks((prev) =>
+      prev.map((bookmark) =>
+        bookmark.id === id ? { ...bookmark, title: newTitle } : bookmark
+      )
+    );
+  };
+
+  const removeBookmark = (id: number) => {
+    setBookmarks((prev) => prev.filter((bookmark) => bookmark.id !== id));
+  };
+
+  return (
+    <main className="container mx-auto p-4 font-mono">
+      <Header
+        isManaging={isManaging}
+        onManageClick={() => setIsManaging(!isManaging)}
+      />
+      <SearchBar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onEnter={addBookmark}
+      />
+      <BookmarkList
+        bookmarks={filteredBookmarks}
+        isManaging={isManaging}
+        onUpdate={updateBookmark}
+        onRemove={removeBookmark}
+      />
+    </main>
   );
 }
